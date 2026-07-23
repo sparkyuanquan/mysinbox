@@ -22,22 +22,22 @@ jobs:
           cd sing-box
           
           # 2. 交叉编译 aarch64 架构，仅保留必要的 openconnect 和 gvisor 模块
-          # CGO_ENABLED=0 确保纯静态链接，无需依赖系统 libc
+          # 输出名字改为 sing-box-bin 避免与目录重名
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
           go build -v \
             -trimpath \
             -ldflags="-s -w -buildid=" \
             -tags "with_gvisor,with_openconnect" \
-            -o ../sing-box ./cmd/sing-box
+            -o ../sing-box-bin ./cmd/sing-box
 
       - name: Compress Binary
         run: |
-          # 使用 UPX 极限压缩体积，确保文件在 6MB-8MB 左右
+          # 3. 安装 UPX 并压缩二进制文件
           sudo apt-get update && sudo apt-get install -y upx
-          upx --best --lzma sing-box
+          upx --best --lzma sing-box-bin
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: sing-box-arm64
-          path: sing-box
+          path: sing-box-bin

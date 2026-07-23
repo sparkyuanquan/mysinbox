@@ -1,7 +1,10 @@
 name: Build Minimal Sing-Box
 
 on:
-  workflow_dispatch: # 支持手动点击运行
+  workflow_dispatch:
+
+permissions:
+  contents: write  # 必须，赋予写 Release 的权限
 
 jobs:
   build:
@@ -17,12 +20,8 @@ jobs:
 
       - name: Build sing-box for ARM64
         run: |
-          # 1. 克隆 sing-box 最新代码
           git clone https://github.com/SagerNet/sing-box.git
           cd sing-box
-          
-          # 2. 交叉编译 aarch64 架构，仅保留必要的 openconnect 和 gvisor 模块
-          # 输出名字改为 sing-box-bin 避免与目录重名
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
           go build -v \
             -trimpath \
@@ -32,12 +31,14 @@ jobs:
 
       - name: Compress Binary
         run: |
-          # 3. 安装 UPX 并压缩二进制文件
           sudo apt-get update && sudo apt-get install -y upx
           upx --best --lzma sing-box-bin
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+      # 自动生成 Release 步骤
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: sing-box-arm64
-          path: sing-box-bin
+          tag_name: v1.0.0-${{ github.run_number }}
+          name: Sing-Box Minimal ARM64 (v1.0.0-${{ github.run_number }})
+          body: "随身 Wi-Fi 专属精简版 sing-box 二进制文件"
+          files: sing-box-bin

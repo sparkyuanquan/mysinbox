@@ -1,0 +1,43 @@
+name: Build Minimal Sing-Box
+
+on:
+  workflow_dispatch: # 支持手动点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build sing-box for ARM64
+        run: |
+          # 1. 克隆 sing-box 最新代码
+          git clone https://github.com/SagerNet/sing-box.git
+          cd sing-box
+          
+          # 2. 交叉编译 aarch64 架构，仅保留必要的 openconnect 和 gvisor 模块
+          # CGO_ENABLED=0 确保纯静态链接，无需依赖系统 libc
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+          go build -v \
+            -trimpath \
+            -ldflags="-s -w -buildid=" \
+            -tags "with_gvisor,with_openconnect" \
+            -o ../sing-box ./cmd/sing-box
+
+      - name: Compress Binary
+        run: |
+          # 使用 UPX 极限压缩体积，确保文件在 6MB-8MB 左右
+          sudo apt-get update && sudo apt-get install -y upx
+          upx --best --lzma sing-box
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sing-box-arm64
+          path: sing-box
